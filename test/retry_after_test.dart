@@ -62,9 +62,6 @@ void main() {
       final startTime = DateTime.now();
       var exceptionThrown = false;
 
-      final futureDate = DateTime.now().toUtc().add(const Duration(seconds: 2));
-      final httpDate = HttpDate.format(futureDate);
-
       try {
         await dio.get<dynamic>('$retryAfter429Date/invalid-date');
       } catch (_) {
