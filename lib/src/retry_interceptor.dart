@@ -149,14 +149,14 @@ class RetryInterceptor extends Interceptor {
 
   Duration _getDelay(int attempt, DioException? err) {
     final retryAfter = err?.response?.headers.value('retry-after');
-    
+
     if (retryAfter != null) {
       // Try parsing as seconds first
       final seconds = int.tryParse(retryAfter);
       if (seconds != null && seconds >= 0) {
         return Duration(seconds: seconds);
       }
-      
+
       // Try parsing as HTTP date
       try {
         final date = HttpDate.parse(retryAfter);
