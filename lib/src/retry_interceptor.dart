@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:dio_smart_retry/src/default_retry_evaluator.dart';
@@ -115,7 +116,7 @@ class RetryInterceptor extends Interceptor {
     }
 
     err.requestOptions._attempt = attempt;
-    final delay = _getDelay(attempt);
+    final delay = _getDelay(attempt, err);
     logPrint?.call(
       '[${err.requestOptions.path}] An error occurred during request, '
       'trying again '
@@ -146,7 +147,31 @@ class RetryInterceptor extends Interceptor {
     }
   }
 
-  Duration _getDelay(int attempt) {
+  Duration _getDelay(int attempt, DioException? err) {
+    final retryAfter = err?.response?.headers.value('retry-after');
+    
+    if (retryAfter != null) {
+      // Try parsing as seconds first
+      final seconds = int.tryParse(retryAfter);
+      if (seconds != null && seconds >= 0) {
+        return Duration(seconds: seconds);
+      }
+      
+      // Try parsing as HTTP date
+      try {
+        final date = HttpDate.parse(retryAfter);
+        final now = DateTime.now().toUtc();
+        final wait = date.difference(now);
+        if (wait.isNegative) {
+          return Duration.zero;
+        }
+        return wait;
+      } catch (_) {
+        // Invalid date format, fall through to default delay
+      }
+    }
+
+    // Fall back to configured delays if no valid Retry-After
     if (retryDelays.isEmpty) return Duration.zero;
     return attempt - 1 < retryDelays.length
         ? retryDelays[attempt - 1]
