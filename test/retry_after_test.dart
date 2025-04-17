@@ -22,8 +22,7 @@ void main() {
         dio: dio,
         retries: 1,
         logPrint: print,
-        //This should be ignored for Retry-After
-        retryDelays: const [Duration(seconds: 30)],
+        retryDelays: const [Duration(seconds: 1)],
       );
       dio.interceptors.add(interceptor);
     });
@@ -56,6 +55,23 @@ void main() {
       }
       final duration = DateTime.now().difference(startTime);
       expect(duration.inSeconds, lessThanOrEqualTo(2));
+      expect(exceptionThrown, true);
+    });
+
+    test('invalid Retry-After header is ignored', () async {
+      final startTime = DateTime.now();
+      var exceptionThrown = false;
+
+      final futureDate = DateTime.now().toUtc().add(const Duration(seconds: 2));
+      final httpDate = HttpDate.format(futureDate);
+
+      try {
+        await dio.get<dynamic>('$retryAfter429Date/invalid-date');
+      } catch (_) {
+        exceptionThrown = true;
+      }
+      final duration = DateTime.now().difference(startTime);
+      expect(duration.inSeconds, greaterThanOrEqualTo(1));
       expect(exceptionThrown, true);
     });
   });
